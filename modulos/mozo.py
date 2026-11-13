@@ -81,8 +81,15 @@ class Mozo:
         """Lee las comandas del JSON, o empieza vacío si el archivo todavía no existe."""
         if not os.path.exists(ARCHIVO):
             return
-        with open(ARCHIVO, encoding="utf-8") as archivo:
-            self.comandas = [Comanda.desde_diccionario(d) for d in json.load(archivo)]
+        # Si el archivo está roto o le falta algún campo, el programa avisa y
+        # arranca sin comandas en lugar de cortarse con un error
+        try:
+            with open(ARCHIVO, encoding="utf-8") as archivo:
+                self.comandas = [Comanda.desde_diccionario(d) for d in json.load(archivo)]
+        except (json.JSONDecodeError, OSError, KeyError, ValueError):
+            print(f"El archivo {os.path.basename(ARCHIVO)} no se pudo leer o tiene un")
+            print("formato distinto al esperado. Se arranca sin comandas cargadas.")
+            self.comandas = []
 
     def guardar(self):
         """Escribe todas las comandas en el JSON."""
@@ -122,12 +129,18 @@ def cargar_items(comanda, carta, mozo):
         if codigo == "0":
             break
         producto = carta.obtener(codigo)
-        if producto is None or not producto.disponible:
-            print("  Ese plato no está disponible.")
+        if producto is None:
+            print("  Ese código no está en la carta. Hay que escribir uno de los")
+            print("  que aparecen arriba, por ejemplo P1 o B2.")
+            continue
+        if not producto.disponible:
+            print(f"  {producto.nombre} está agotado, la cocina lo marcó como")
+            print("  no disponible. Hay que elegir otro plato.")
             continue
         texto = input(f"  Cantidad de '{producto.nombre}': ").strip() or "1"
         if not texto.isdigit() or int(texto) < 1:
-            print("  Cantidad inválida.")
+            print("  La cantidad tiene que ser un número entero de 1 o más,")
+            print("  escrito sin letras ni decimales.")
             continue
         comanda.agregar_item(producto.codigo, int(texto),
                              input("  Observación (Enter si no hay): ").strip())
@@ -146,11 +159,16 @@ def elegir_comanda(mozo, estado, carta):
               f" - {comanda.calcular_total(carta):,} Gs.")
     texto = input("Número de comanda: ").strip()
     if not texto.isdigit():
-        print("  Número inválido.")
+        print("  Hay que escribir el número de una de las comandas de arriba,")
+        print("  usando solo dígitos.")
         return None
     elegida = mozo.buscar(int(texto))
-    if elegida is None or elegida.estado != estado:
-        print("  Esa comanda no está disponible.")
+    if elegida is None:
+        print(f"  No existe ninguna comanda con el número {texto}.")
+        return None
+    if elegida.estado != estado:
+        print(f"  La comanda #{elegida.numero} está en estado '{elegida.estado}'")
+        print(f"  y para esta operación tiene que estar en '{estado}'.")
         return None
     return elegida
 
@@ -181,7 +199,8 @@ def menu(restaurante=None, mesas=None):
 
             texto = input("Número de mesa: ").strip()
             if not texto.isdigit() or int(texto) <= 0:
-                print("  Número de mesa inválido.")
+                print("  El número de mesa tiene que ser un entero mayor que cero,")
+                print("  escrito solo con dígitos.")
                 continue
 
             # Una comanda solo se abre sobre una mesa que exista y que ya haya
@@ -189,10 +208,12 @@ def menu(restaurante=None, mesas=None):
             numero = int(texto)
             mesa = mesas.get(numero)
             if mesa is None:
-                print("  La mesa no existe. Hay que registrarla primero.")
+                print(f"  La mesa {numero} no está registrada. Hay que darla de alta")
+                print("  desde el módulo Mesa antes de poder atenderla.")
                 continue
             if mesa.estado != "Ocupada":
-                print("  La mesa está libre. Hay que ocuparla primero.")
+                print(f"  La mesa {numero} figura como Libre. Hay que ocuparla desde")
+                print("  el módulo Mesa antes de tomarle el pedido.")
                 continue
 
             # Cada mesa puede tener una sola comanda activa a la vez, asi que se
@@ -204,7 +225,8 @@ def menu(restaurante=None, mesas=None):
                     comanda_activa = True
                     break
             if comanda_activa:
-                print("  Esta mesa ya tiene una comanda activa.")
+                print(f"  La mesa {numero} ya tiene una comanda sin entregar. Hay que")
+                print("  entregarla antes de abrir otra, o agregar los platos a esa.")
                 continue
 
             comanda = mozo.nueva_comanda(numero)
@@ -221,7 +243,8 @@ def menu(restaurante=None, mesas=None):
         elif opcion == "3":
             comanda = elegir_comanda(mozo, PENDIENTE, carta)
             if comanda and not comanda.items:
-                print("  No se puede enviar una comanda sin platos.")
+                print("  La comanda no tiene ningún plato cargado todavía. Hay que")
+                print("  agregarlos con la opción 2 antes de mandarla a la cocina.")
             elif comanda:
                 mozo.cambiar_estado(comanda, EN_PREPARACION)
                 print(f"  Comanda #{comanda.numero} enviada a la cocina.")
