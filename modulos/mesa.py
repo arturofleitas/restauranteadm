@@ -30,8 +30,8 @@ class Mesa:
 
 
 # Menu principal del modulo Mesa.
-def menu():
-    mesas = {}
+# Recibe las mesas compartidas por el programa principal.
+def menu(mesas):
 
     while True:
         print("\n===== GESTION DE MESAS =====")
@@ -116,6 +116,7 @@ def menu():
             print("Opcion invalida.")
 
 
-# Ejecuta el menu al iniciar este archivo.
+# Permite probar el modulo independientemente.
 if __name__ == "__main__":
-    menu()
+    mesas = {}
+    menu(mesas)
