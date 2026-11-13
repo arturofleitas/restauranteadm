@@ -43,10 +43,19 @@ class Carta:
                 self.productos[codigo] = Producto(codigo, nombre, precio)
             self.guardar()
             return
-        with open(ARCHIVO, encoding="utf-8") as archivo:
-            for codigo, datos in json.load(archivo).items():
-                self.productos[codigo] = Producto(
-                    codigo, datos["nombre"], datos["precio"], datos["disponible"])
+        # Si alguien editó el archivo a mano y lo dejó con la sintaxis rota, el
+        # programa avisa y sigue con la carta inicial en lugar de cortarse
+        try:
+            with open(ARCHIVO, encoding="utf-8") as archivo:
+                for codigo, datos in json.load(archivo).items():
+                    self.productos[codigo] = Producto(
+                        codigo, datos["nombre"], datos["precio"], datos["disponible"])
+        except (json.JSONDecodeError, OSError, KeyError):
+            print(f"El archivo {os.path.basename(ARCHIVO)} no se pudo leer o tiene un")
+            print("formato distinto al esperado. Se arranca con la carta inicial.")
+            self.productos = {}
+            for codigo, (nombre, precio) in INICIALES.items():
+                self.productos[codigo] = Producto(codigo, nombre, precio)
 
     def guardar(self):
         """Escribe la carta completa en el JSON."""
@@ -151,7 +160,7 @@ def menu(restaurante=None):
         elif opcion == "2":
             resultados = carta.buscar(input("Buscar: ").strip())
             if not resultados:
-                print("No se encontró ningún producto.")
+                print("No hay ningún producto cuyo nombre contenga ese texto.")
             for producto in resultados:
                 producto.mostrar_informacion()
 
@@ -162,11 +171,13 @@ def menu(restaurante=None):
         elif opcion == "4":
             texto = input("Presupuesto en Gs.: ").strip()
             if not texto.isdigit():
-                print("Presupuesto inválido.")
+                print("El presupuesto tiene que ser un número entero en guaraníes,\n"
+                      "escrito sin puntos ni comas. Por ejemplo 100000.")
                 continue
             elegidos, total = carta.combo_optimo(int(texto))
             if not elegidos:
-                print("No alcanza para ningún producto.")
+                print("Con ese presupuesto no alcanza ni para el producto más\n"
+                  f"barato de la carta, que cuesta {min(p.precio for p in carta.productos.values()):,} Gs.")
                 continue
             for producto in elegidos:
                 producto.mostrar_informacion()
@@ -176,7 +187,8 @@ def menu(restaurante=None):
             carta.mostrar()
             producto = carta.cambiar_disponibilidad(input("Código: ").strip())
             if producto is None:
-                print("Ese código no existe.")
+                print("Ese código no está en la carta. Hay que escribir uno de los\n"
+                      "que aparecen en la lista de arriba, por ejemplo P1 o B2.")
             else:
                 print(f"{producto.nombre}: "
                       f"{'disponible' if producto.disponible else 'AGOTADO'}")
