@@ -155,8 +155,12 @@ def elegir_comanda(mozo, estado, carta):
     return elegida
 
 
-def menu(restaurante=None):
+def menu(restaurante=None, mesas=None):
+    # La carta y las mesas llegan del programa principal para que todos los
+    # modulos trabajen sobre los mismos datos. Si no llegan mesas, el modulo
+    # igual arranca pero no va a encontrar ninguna para atender.
     carta = obtener_carta(restaurante)
+    mesas = mesas if mesas is not None else {}
     mozo = Mozo(input("\nNombre del mozo: ").strip() or "Sin nombre")
 
     while True:
@@ -170,11 +174,40 @@ def menu(restaurante=None):
         opcion = input("Opción: ").strip()
 
         if opcion == "1":
-            texto = input("Número de mesa: ").strip()
-            if not texto.isdigit():
-                print("Número inválido.")
+            if not mesas:
+                print("  No hay mesas registradas. Primero hay que darlas de"
+                      " alta desde el modulo Mesa.")
                 continue
-            comanda = mozo.nueva_comanda(int(texto))
+
+            texto = input("Número de mesa: ").strip()
+            if not texto.isdigit() or int(texto) <= 0:
+                print("  Número de mesa inválido.")
+                continue
+
+            # Una comanda solo se abre sobre una mesa que exista y que ya haya
+            # sido ocupada desde el modulo Mesa
+            numero = int(texto)
+            mesa = mesas.get(numero)
+            if mesa is None:
+                print("  La mesa no existe. Hay que registrarla primero.")
+                continue
+            if mesa.estado != "Ocupada":
+                print("  La mesa está libre. Hay que ocuparla primero.")
+                continue
+
+            # Cada mesa puede tener una sola comanda activa a la vez, asi que se
+            # revisa si ya hay alguna sin entregar antes de abrir otra
+            comanda_activa = False
+            for comanda_existente in mozo.comandas:
+                if (comanda_existente.mesa == numero
+                        and comanda_existente.estado != ENTREGADA):
+                    comanda_activa = True
+                    break
+            if comanda_activa:
+                print("  Esta mesa ya tiene una comanda activa.")
+                continue
+
+            comanda = mozo.nueva_comanda(numero)
             print(f"  Comanda #{comanda.numero} abierta.")
             cargar_items(comanda, carta, mozo)
             comanda.mostrar_informacion(carta)
