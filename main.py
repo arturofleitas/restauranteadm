@@ -11,7 +11,7 @@ from modulos import caja, cliente, mesa, mozo
 from modulos import menu as carta_menu
 from modulos import pass_ as pase
 from modulos.menu import Carta
-from modulos.mozo import EN_PREPARACION, LISTA, PENDIENTE, ENTREGADA Mozo
+from modulos.mozo import EN_PREPARACION, LISTA, PENDIENTE, ENTREGADA, Mozo
 
 # La portada usa las librerias rich y pyfiglet (pip install -r requirements.txt).
 # Si no estan instaladas, el programa funciona igual con el menu de texto simple.
