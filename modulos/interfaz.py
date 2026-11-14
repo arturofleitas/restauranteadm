@@ -1,4 +1,3 @@
-
 """
 Interfaz visual de RestauPy.
 
@@ -226,8 +225,12 @@ def titulo_azul(espacio):
 # PANTALLA PRINCIPAL
 # --------------------------------------------------
 
-def mostrar_inicio(mesas=None):
-    """Muestra la portada principal de RestauPy."""
+def mostrar_inicio(mesas=None, opciones_menu=None):
+    """Muestra la portada principal de RestauPy.
+
+    main.py pasa las mesas compartidas y la lista de opciones del menu,
+    para que la portada dibuje siempre las mismas opciones que el programa.
+    """
 
     if mesas is None:
         mesas = {}
@@ -349,12 +352,14 @@ def mostrar_inicio(mesas=None):
         style="bold bright_cyan"
     )
 
-    lista_opciones = [
+    # Si main.py no envia opciones, se usan estas por defecto.
+    lista_opciones = opciones_menu or [
         ("1", "Cliente"),
         ("2", "Gestión de Mesas"),
-        ("3", "Mozo (Comandas)"),
-        ("4", "Pass (Cocina)"),
-        ("5", "Caja"),
+        ("3", "Menú (Carta)"),
+        ("4", "Mozo (Comandas)"),
+        ("5", "Pass (Cocina)"),
+        ("6", "Caja"),
         ("0", "Salir")
     ]
 
