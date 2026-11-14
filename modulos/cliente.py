@@ -72,6 +72,7 @@ def registrar_cliente(restaurante):
     cliente = Cliente(codigo, nombre, cantidad)
 
     restaurante.clientes[codigo] = cliente
+    print("CLIENTES GUARDADOS:", len(restaurante.clientes))
 
     print("\nCliente registrado correctamente.")
     cliente.mostrar_informacion()
@@ -87,7 +88,6 @@ def listar_clientes(restaurante):
 
     for cliente in restaurante.clientes.values():
         cliente.mostrar_informacion()
-
 
 def buscar_cliente(restaurante):
 

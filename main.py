@@ -1,31 +1,52 @@
-"""restauranteadm: punto de entrada y menú principal de la consola."""
+"""restauranteadm: sistema de restaurante con comandas y cobro digital.
 
-from modelos import Restaurante
-from modulos import caja, cliente, mesa, mozo, pass_ as pase
+main.py solo crea los datos compartidos y muestra el menu principal.
+Cada modulo vive en su propio archivo dentro de la carpeta modulos/."""
 
-OPCIONES = {
-    "1": ("Cliente (llegada y carta)", cliente.menu),
-    "2": ("Mesa", mesa.menu),
-    "3": ("Mozo (comandas)", mozo.menu),
-    "4": ("Pass (cocina)", pase.menu),
-    "5": ("Caja", caja.menu),
-}
+from modulos import cliente, mesa, mozo
+from modulos import menu as carta_menu
+from modulos import pass_ as pase
+from modulos.menu import Carta
 
+
+class Restaurante:
+    """Datos que comparten todos los modulos durante la ejecucion."""
+
+    def __init__(self):
+        self.carta = Carta()
+        self.mesas = {}
+        self.clientes = {}
 
 def main():
     restaurante = Restaurante()
+
     while True:
         print("\n=== RESTAURANTEADM ===")
-        for clave, (titulo, _) in OPCIONES.items():
-            print(f"{clave}. {titulo}")
+        print("1. Cliente")
+        print("2. Mesa")
+        print("3. Menu (carta)")
+        print("4. Mozo (comandas)")
+        print("5. Pass (cocina)")
+        print("6. Caja")
         print("0. Salir")
-        opcion = input("Opción: ").strip()
-        if opcion == "0":
+        opcion = input("Opcion: ").strip()
+
+        if opcion == "1":
+            cliente.menu(restaurante)
+        elif opcion == "2":
+            mesa.menu(restaurante.mesas)
+        elif opcion == "3":
+            carta_menu.menu(restaurante)
+        elif opcion == "4":
+            mozo.menu(restaurante, restaurante.mesas)
+        elif opcion == "5":
+            pase.menu(restaurante)
+        elif opcion == "6":
+            print("\n[Caja] Modulo en construccion.")
+        elif opcion == "0":
             break
-        if opcion in OPCIONES:
-            OPCIONES[opcion][1](restaurante)
         else:
-            print("Opción inválida.")
+            print("Opcion invalida.")
 
 
 if __name__ == "__main__":
