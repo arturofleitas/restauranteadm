@@ -1,5 +1,4 @@
 """Módulo para la gestión de caja y cobranza de mesas."""
-
 from modulos.mozo import ENTREGADA, Mozo
 
 
