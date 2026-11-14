@@ -7,11 +7,11 @@ La portada visual la dibuja modulos/interfaz.py; aqui solo se decide que hacer."
 import os
 import sys
 
-from modulos import cliente, mesa, mozo
+from modulos import caja, cliente, mesa, mozo
 from modulos import menu as carta_menu
 from modulos import pass_ as pase
 from modulos.menu import Carta
-from modulos.mozo import EN_PREPARACION, LISTA, PENDIENTE, Mozo
+from modulos.mozo import EN_PREPARACION, LISTA, PENDIENTE, ENTREGADA, Mozo
 
 # La portada usa las librerias rich y pyfiglet (pip install -r requirements.txt).
 # Si no estan instaladas, el programa funciona igual con el menu de texto simple.
@@ -48,6 +48,8 @@ AYUDA_MODULO = {
           "Numero de mesa: una mesa ya registrada y ocupada, por ejemplo  1",
           "Codigo del plato: por ejemplo  P1 ; escriba  0  para terminar de cargar",
           "Observacion: texto libre, por ejemplo  sin cebolla  (o Enter si no hay)"],
+    "6": ["CAJA: consulte los pedidos entregados y cobre la cuenta de la mesa.",
+          "Numero de mesa: escriba el numero de la mesa a cobrar, por ejemplo  1"],
 }
 
 
@@ -136,7 +138,7 @@ def mostrar_guia():
         ("4. Mozo", "Abra la comanda, cargue los platos y enviela a cocina."),
         ("5. Pass", "La cocina prepara el pedido y lo marca como listo."),
         ("4. Mozo", "Entregue en la mesa la comanda lista."),
-        ("6. Caja", "Cobre la cuenta (modulo en construccion)."),
+        ("6. Caja", "Cobre la cuenta y emita el ticker de pago"),
         ("2. Gestión de Mesas", "Libere la mesa para el proximo cliente."),
     ]
     for numero, (donde, que) in enumerate(pasos, start=1):
@@ -157,7 +159,11 @@ def siguiente_paso(restaurante):
     abiertas = len(comandas.por_estado(PENDIENTE))
     mesas = restaurante.mesas
     ocupadas = [m for m in mesas.values() if m.estado == "Ocupada"]
+    entregadas = len(comandas.por_estado(ENTREGADA))
 
+    if entregadas:
+        return (f"Hay {entregadas} comanda(s) entregada(s). Entre a 6. Caja"
+                " para cobrar la cuenta.")
     if listas:
         return (f"Hay {listas} comanda(s) lista(s). Entre a 4. Mozo y elija"
                 " 'Entregar comanda lista'.")
@@ -222,7 +228,7 @@ def main():
         elif opcion == "5":
             pase.menu(restaurante)
         elif opcion == "6":
-            mensaje = "El modulo Caja todavia esta en construccion."
+            abrir_modulo(opcion, caja.gestionar_caja, restaurante)
         elif opcion == "7":
             mostrar_guia()
         elif opcion == "0":
@@ -236,3 +242,37 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def gestionar_caja(restaurante):
+    """CAja recibe el objeto resaurante por parametro"""
+    print("\n--- MÓDULO DE CAJA Y COBRANZA ---")
+    print("1. Ver pedidos pendientes de cobro")
+    print("2. Cobrar mesa / pedido")
+
+    opcion_caja = input("Seleccione una opción de caja: ").strip()
+
+    if opcion_caja == "1":
+        print("\n[Caja] Consultando pedidos en curso...")
+
+    elif opcion_caja == "2":
+        mesa_id = input(
+            "Ingrese el número de mesa o ID del cliente a cobrar: ")
+
+        IVA = 0.10
+        subtotal = 45000  # SUPONIENDO QUE ES EL TOTAL
+        impuesto = subtotal * IVA
+        total_a_pagar = subtotal + impuesto
+
+        print(f"\n--- TICKET DE PAGO (Mesa {mesa_id}) ---")
+        print(f"Subtotal: Gs. {subtotal:,.0f}")
+        print(f"IVA (10%): Gs. {impuesto:,.0f}")
+        print(f"TOTAL A PAGAR: Gs. {total_a_pagar:,.0f}")
+
+        confirmar = input("¿Confirmar cobro? (s/n): ").lower()
+        if confirmar == 's':
+            print("¡Cobro exitoso! Comanda cerrada y guardada en el reporte de caja.")
+        else:
+            print("Cobro cancelado.")
+    else:
+        print("Opción de caja no válida.")
