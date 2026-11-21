@@ -1,7 +1,8 @@
 import json
 import os
 
-from modulos.entrada import error, info, limpiar, ok, pausa, pedir, titulo
+from modulos.entrada import (error, info, limpiar, ok, pausa, pedir,
+                             pedir_entero, titulo)
 
 ARCHIVO = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datos", "menu.json")
@@ -196,19 +197,18 @@ def menu(restaurante=None):
                 producto.mostrar_informacion()
 
         elif opcion == "4":
-            texto = pedir("Presupuesto en Gs.", "sin puntos ni comas, ej.: 100000")
-            if not texto.isdigit():
-                error("El presupuesto tiene que ser un número entero en guaraníes,\n"
-                      "escrito sin puntos ni comas. Por ejemplo 100000.")
+            # pedir_entero repite la pregunta si hay letras, decimales o un 0, y Enter vacio cancela
+            presupuesto = pedir_entero("Presupuesto en Gs.", "100000", minimo=1)
+            if presupuesto is None:
                 continue
-            elegidos, total = carta.combo_optimo(int(texto))
+            elegidos, total = carta.combo_optimo(presupuesto)
             if not elegidos:
                 error("Con ese presupuesto no alcanza ni para el producto más\n"
                       f"barato de la carta, que cuesta {min(p.precio for p in carta.productos.values()):,} Gs.")
                 continue
             for producto in elegidos:
                 producto.mostrar_informacion()
-            ok(f"TOTAL: {total:,} Gs. (sobra {int(texto) - total:,} Gs.)")
+            ok(f"TOTAL: {total:,} Gs. (sobra {presupuesto - total:,} Gs.)")
 
         elif opcion == "5":
             carta.mostrar()
