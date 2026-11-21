@@ -1,6 +1,8 @@
 import json
 import os
 
+from modulos.entrada import error, info, limpiar, ok, pausa, pedir, titulo
+
 ARCHIVO = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datos", "menu.json")
 
@@ -141,26 +143,51 @@ def obtener_carta(restaurante):
     return restaurante.carta
 
 
+# Orientacion que se muestra arriba del menu: que escribir en cada campo
+AYUDA = [
+    "MENU: consulte la carta, busque platos y vea precios.",
+    "Codigos de platos: letra y numero, por ejemplo  P1  (plato) o  B2  (bebida)",
+    "Presupuesto: guaranies sin puntos ni comas, por ejemplo  100000",
+]
+
+
 def menu(restaurante=None):
     carta = obtener_carta(restaurante)
 
+    # 'esperar' vale True despues de ejecutar una opcion: antes de limpiar la
+    # pantalla se espera un Enter para que el usuario alcance a leer el resultado.
+    esperar = False
+
     while True:
-        print("\n=== MODULO MENU ===")
+        if esperar:
+            pausa()
+        limpiar()   # pantalla limpia en cada vuelta: la terminal no se llena de texto
+        titulo("MODULO MENU")
+        for linea in AYUDA:
+            info(linea)
         print("1. Ver carta")
         print("2. Buscar producto")
         print("3. Ordenar por precio")
         print("4. Combo óptimo según presupuesto")
         print("5. Marcar producto agotado o disponible")
         print("0. Volver")
-        opcion = input("Opción: ").strip()
+        opcion = pedir("Opcion", "escriba el numero y Enter, ej.: 1")
+        esperar = True
+        print()
 
         if opcion == "1":
             carta.mostrar()
 
         elif opcion == "2":
-            resultados = carta.buscar(input("Buscar: ").strip())
+            texto = pedir("Buscar", "parte del nombre del plato, ej.: milanesa")
+            if not texto:
+                # Un texto vacio coincidiria con todos los productos: se avisa en vez de listar todo
+                error("No escribió nada para buscar. Escriba parte del nombre\n"
+                      "de un plato, por ejemplo: milanesa.")
+                continue
+            resultados = carta.buscar(texto)
             if not resultados:
-                print("No hay ningún producto cuyo nombre contenga ese texto.")
+                error("No hay ningún producto cuyo nombre contenga ese texto.")
             for producto in resultados:
                 producto.mostrar_informacion()
 
@@ -169,29 +196,35 @@ def menu(restaurante=None):
                 producto.mostrar_informacion()
 
         elif opcion == "4":
-            texto = input("Presupuesto en Gs.: ").strip()
+            texto = pedir("Presupuesto en Gs.", "sin puntos ni comas, ej.: 100000")
             if not texto.isdigit():
-                print("El presupuesto tiene que ser un número entero en guaraníes,\n"
+                error("El presupuesto tiene que ser un número entero en guaraníes,\n"
                       "escrito sin puntos ni comas. Por ejemplo 100000.")
                 continue
             elegidos, total = carta.combo_optimo(int(texto))
             if not elegidos:
-                print("Con ese presupuesto no alcanza ni para el producto más\n"
-                  f"barato de la carta, que cuesta {min(p.precio for p in carta.productos.values()):,} Gs.")
+                error("Con ese presupuesto no alcanza ni para el producto más\n"
+                      f"barato de la carta, que cuesta {min(p.precio for p in carta.productos.values()):,} Gs.")
                 continue
             for producto in elegidos:
                 producto.mostrar_informacion()
-            print(f"  TOTAL: {total:,} Gs. (sobra {int(texto) - total:,} Gs.)")
+            ok(f"TOTAL: {total:,} Gs. (sobra {int(texto) - total:,} Gs.)")
 
         elif opcion == "5":
             carta.mostrar()
-            producto = carta.cambiar_disponibilidad(input("Código: ").strip())
+            producto = carta.cambiar_disponibilidad(
+                pedir("Codigo", "uno de la lista de arriba, ej.: P1 o B2"))
             if producto is None:
-                print("Ese código no está en la carta. Hay que escribir uno de los\n"
+                error("Ese código no está en la carta. Hay que escribir uno de los\n"
                       "que aparecen en la lista de arriba, por ejemplo P1 o B2.")
             else:
-                print(f"{producto.nombre}: "
-                      f"{'disponible' if producto.disponible else 'AGOTADO'}")
+                ok(f"{producto.nombre}: "
+                   f"{'disponible' if producto.disponible else 'AGOTADO'}")
 
         elif opcion == "0":
-            break
+            break   # vuelve al menu principal sin esperar Enter
+
+        else:
+            # Cualquier otra cosa no es una opcion del menu
+            error(f"'{opcion}' no es una opción del menú. Escriba uno de los\n"
+                  "números de la lista, por ejemplo 1.")
