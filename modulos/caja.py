@@ -1,30 +1,41 @@
 """Módulo para la gestión de caja y cobranza de mesas."""
+from modulos.entrada import (aviso, error, info, limpiar, ok, pausa, pedir,
+                             pedir_si_no, titulo)
 from modulos.mozo import ENTREGADA, Mozo
 
 
 def gestionar_caja(restaurante):
     """Caja recibe el objeto restaurante por parámetro."""
+    # 'esperar' vale True despues de ejecutar una opcion: antes de limpiar la
+    # pantalla se espera un Enter para que el usuario alcance a leer el resultado.
+    esperar = False
+
     while True:
-        print("\n--- MÓDULO DE CAJA Y COBRANZA ---")
+        if esperar:
+            pausa()
+        limpiar()   # pantalla limpia en cada vuelta: la terminal no se llena de texto
+        titulo("MÓDULO DE CAJA Y COBRANZA")
+        info("Numero de mesa: el de una mesa con pedidos entregados, ej.: 1")
         print("1. Ver pedidos pendientes de cobro")
         print("2. Cobrar mesa / pedido")
         print("0. Volver al menú principal")
 
-        opcion_caja = input("\nSeleccione una opción de caja: ").strip()
+        opcion_caja = pedir("Opcion", "escriba el numero y Enter, ej.: 1")
+        esperar = True
+        print()
 
         if opcion_caja == "0":
-            break
+            break   # vuelve al menu principal sin esperar Enter
 
         elif opcion_caja == "1":
-            print("\n[Caja] Consultando pedidos en curso...")
+            # Las comandas ENTREGADAS son las que ya se sirvieron y faltan cobrar
             registro = Mozo("Caja")
             pendientes = registro.por_estado(ENTREGADA)
 
             if not pendientes:
-                print("  No hay pedidos pendientes de cobro en este momento.")
+                aviso("No hay pedidos pendientes de cobro en este momento.")
             else:
-                print(
-                    f"\n  Hay {len(pendientes)} pedido(s) listos para cobrar:")
+                print(f"Hay {len(pendientes)} pedido(s) listos para cobrar:")
                 for comanda in pendientes:
                     total = comanda.calcular_total(restaurante.carta)
                     print(
@@ -35,14 +46,18 @@ def gestionar_caja(restaurante):
             pendientes = registro.por_estado(ENTREGADA)
 
             if not pendientes:
-                print("\n  No hay pedidos entregados pendientes de cobro.")
+                aviso("No hay pedidos entregados pendientes de cobro.")
                 continue
 
-            mesa_id = input(
-                "\nIngrese el número de mesa o ID del cliente a cobrar: ").strip()
+            # Se muestran las mesas con algo para cobrar para que el usuario sepa que numero escribir
+            mesas_con_deuda = sorted({c.mesa for c in pendientes})
+            info("Mesas con cuenta para cobrar: " + ", ".join(str(m) for m in mesas_con_deuda))
+            mesa_id = pedir("Numero de mesa a cobrar", "ej.: " + str(mesas_con_deuda[0]))
 
+            # Validacion: solo digitos (evita letras, vacios y numeros negativos)
             if not mesa_id.isdigit():
-                print("  Debe ingresar un número de mesa válido.")
+                error("Debe ingresar un número de mesa válido: solo dígitos,\n"
+                      "por ejemplo 1.")
                 continue
 
             num_mesa = int(mesa_id)
@@ -50,8 +65,8 @@ def gestionar_caja(restaurante):
             comandas_mesa = [c for c in pendientes if c.mesa == num_mesa]
 
             if not comandas_mesa:
-                print(
-                    f"  No se encontraron comandas pendientes de cobro para la mesa {num_mesa}.")
+                error(f"No se encontraron comandas pendientes de cobro para la mesa {num_mesa}.\n"
+                      "Elija una de las mesas indicadas arriba.")
                 continue
 
             subtotal = sum(c.calcular_total(restaurante.carta)
@@ -77,19 +92,21 @@ def gestionar_caja(restaurante):
             print(f"TOTAL A PAGAR: Gs. {total_a_pagar:,.0f}")
             print("-" * 40)
 
-            confirmar = input("¿Confirmar cobro? (s/n): ").strip().lower()
-            if confirmar == "s":
+            # pedir_si_no repite la pregunta en rojo hasta que respondan s o n
+            if pedir_si_no("¿Confirmar cobro?"):
 
                 for c in comandas_mesa:
                     registro.cambiar_estado(c, "cobrada")
 
+                # Al cobrar, la mesa vuelve a quedar libre para el proximo cliente
                 if num_mesa in restaurante.mesas:
                     restaurante.mesas[num_mesa].liberar()
 
-                print(
-                    f"\n¡Cobro exitoso! Mesa {num_mesa} cobrada y liberada correctamente.")
+                ok(f"¡Cobro exitoso! Mesa {num_mesa} cobrada y liberada correctamente.")
             else:
-                print("\nCobro cancelado.")
+                aviso("Cobro cancelado.")
 
         else:
-            print("Opción de caja no válida.")
+            # Cualquier otra cosa no es una opcion del menu
+            error(f"'{opcion_caja}' no es una opción de caja. Escriba uno de los\n"
+                  "números de la lista, por ejemplo 1.")

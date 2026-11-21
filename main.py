@@ -4,12 +4,10 @@ main.py es el unico archivo que se ejecuta:  python main.py
 Crea los datos compartidos, muestra el menu principal y abre cada modulo.
 La portada visual la dibuja modulos/interfaz.py; aqui solo se decide que hacer."""
 
-import os
-import sys
-
 from modulos import caja, cliente, mesa, mozo
 from modulos import menu as carta_menu
 from modulos import pass_ as pase
+from modulos.entrada import (aviso, info, limpiar, pausa, pedir, pintar, titulo)
 from modulos.menu import Carta
 from modulos.mozo import EN_PREPARACION, LISTA, PENDIENTE, ENTREGADA, Mozo
 
@@ -32,90 +30,12 @@ OPCIONES = [
     ("0", "Salir"),
 ]
 
-# Orientacion que se muestra al entrar a cada modulo: para que sirve y que escribir.
+# Orientacion que se muestra al entrar a los modulos que NO limpian la pantalla por su cuenta.
+# Mesa, Menu, Mozo y Caja muestran su propia ayuda dentro de su menu.
 AYUDA_MODULO = {
     "1": ["CLIENTE: registra a la persona que llega al restaurante.",
-          "Nombre: escriba nombre y apellido, por ejemplo  Ana Gonzalez"],
-    "2": ["MESAS: registre las mesas del local y marquelas ocupadas o libres.",
-          "Numero de mesa: un entero mayor que cero, por ejemplo  1",
-          "Capacidad: cantidad de personas, por ejemplo  4",
-          "Una mesa debe estar OCUPADA para que el mozo pueda tomarle el pedido."],
-    "3": ["MENU: consulte la carta, busque platos y vea precios.",
-          "Codigos de platos: letra y numero, por ejemplo  P1  (plato) o  B2  (bebida)",
-          "Presupuesto: guaranies sin puntos ni comas, por ejemplo  100000"],
-    "4": ["MOZO: abra la comanda de una mesa, cargue los platos y enviela a cocina.",
-          "Nombre del mozo: por ejemplo  Lucas",
-          "Numero de mesa: una mesa ya registrada y ocupada, por ejemplo  1",
-          "Codigo del plato: por ejemplo  P1 ; escriba  0  para terminar de cargar",
-          "Observacion: texto libre, por ejemplo  sin cebolla  (o Enter si no hay)"],
-    "6": ["CAJA: consulte los pedidos entregados y cobre la cuenta de la mesa.",
-          "Numero de mesa: escriba el numero de la mesa a cobrar, por ejemplo  1"],
+          "Nombre: nombre y apellido, solo letras, por ejemplo  Arturo Fleitas"],
 }
-
-
-# ---------------------------------------------------------------------
-# Ayudas de pantalla: colores, limpiar la terminal y pedir datos.
-# ---------------------------------------------------------------------
-if sys.stdout.isatty():
-    if os.name == "nt":
-        os.system("")  # activa los colores en la terminal de Windows
-    COLORES = {"verde": "\033[92m", "rojo": "\033[91m", "amarillo": "\033[93m",
-               "celeste": "\033[96m", "gris": "\033[90m", "blanco": "\033[97m"}
-    FIN_COLOR = "\033[0m"
-else:
-    # Sin terminal real (por ejemplo, salida a un archivo) no se usan colores
-    COLORES = dict.fromkeys(
-        ["verde", "rojo", "amarillo", "celeste", "gris", "blanco"], "")
-    FIN_COLOR = ""
-
-
-def pintar(texto, color):
-    return COLORES[color] + texto + FIN_COLOR
-
-
-def limpiar():
-    """Borra la pantalla para que no se acumulen pantallas viejas."""
-    if sys.stdout.isatty():
-        os.system("cls" if os.name == "nt" else "clear")
-    else:
-        print()
-
-
-def titulo(texto):
-    linea = "=" * (len(texto) + 8)
-    print(pintar(linea, "celeste"))
-    print(pintar("    " + texto, "celeste"))
-    print(pintar(linea, "celeste"))
-
-
-def ok(texto):
-    print(pintar("[OK] " + texto, "verde"))
-
-
-def error(texto):
-    print(pintar("[ERROR] " + texto, "rojo"))
-
-
-def aviso(texto):
-    print(pintar("[!] " + texto, "amarillo"))
-
-
-def info(texto):
-    print(pintar(texto, "gris"))
-
-
-def pedir(etiqueta, ejemplo=""):
-    """Pregunta un dato mostrando entre parentesis que hay que escribir."""
-    if ejemplo:
-        etiqueta = etiqueta + " " + pintar("(" + ejemplo + ")", "gris")
-    print(etiqueta + ": ", end="", flush=True)
-    return input().strip()
-
-
-def pausa():
-    """Espera un Enter para que el resultado se pueda leer antes de limpiar."""
-    print(pintar("\nPresione Enter para continuar...", "gris"), end="", flush=True)
-    input()
 
 
 class Restaurante:

@@ -2,6 +2,8 @@ import json
 import os
 from datetime import datetime
 
+from modulos.entrada import (error, info, limpiar, ok, pausa, pedir,
+                             pedir_texto, titulo)
 from modulos.menu import obtener_carta
 
 ARCHIVO = os.path.join(
@@ -125,26 +127,29 @@ def cargar_items(comanda, carta, mozo):
     """Muestra la carta y deja cargar platos hasta que se escriba 0."""
     carta.mostrar(solo_disponibles=True)
     while True:
-        codigo = input("Código del plato (0 para terminar): ").strip()
+        # pedir() muestra el ejemplo entre parentesis y lee sin colores
+        codigo = pedir("Codigo del plato", "ej.: P1 o B2; 0 para terminar")
         if codigo == "0":
             break
         producto = carta.obtener(codigo)
+        # Cada validacion que falla muestra un error en rojo con el motivo
         if producto is None:
-            print("  Ese código no está en la carta. Hay que escribir uno de los")
-            print("  que aparecen arriba, por ejemplo P1 o B2.")
+            error("Ese código no está en la carta. Hay que escribir uno de los\n"
+                  "que aparecen arriba, por ejemplo P1 o B2.")
             continue
         if not producto.disponible:
-            print(f"  {producto.nombre} está agotado, la cocina lo marcó como")
-            print("  no disponible. Hay que elegir otro plato.")
+            error(f"{producto.nombre} está agotado, la cocina lo marcó como\n"
+                  "no disponible. Hay que elegir otro plato.")
             continue
-        texto = input(f"  Cantidad de '{producto.nombre}': ").strip() or "1"
+        texto = pedir(f"Cantidad de '{producto.nombre}'",
+                      "entero de 1 o más, Enter = 1") or "1"
         if not texto.isdigit() or int(texto) < 1:
-            print("  La cantidad tiene que ser un número entero de 1 o más,")
-            print("  escrito sin letras ni decimales.")
+            error("La cantidad tiene que ser un número entero de 1 o más,\n"
+                  "escrito sin letras ni decimales.")
             continue
         comanda.agregar_item(producto.codigo, int(texto),
-                             input("  Observación (Enter si no hay): ").strip())
-        print(f"  + {texto} x {producto.nombre}")
+                             pedir("Observacion", "ej.: sin cebolla; Enter si no hay"))
+        ok(f"{texto} x {producto.nombre} agregado a la comanda.")
     mozo.guardar()
 
 
@@ -152,25 +157,34 @@ def elegir_comanda(mozo, estado, carta):
     """Lista las comandas de un estado y devuelve la que el mozo elija."""
     comandas = mozo.por_estado(estado)
     if not comandas:
-        print(f"  No hay comandas en estado '{estado}'.")
+        error(f"No hay comandas en estado '{estado}'.")
         return None
     for comanda in comandas:
         print(f"  #{comanda.numero} Mesa {comanda.mesa}"
               f" - {comanda.calcular_total(carta):,} Gs.")
-    texto = input("Número de comanda: ").strip()
+    texto = pedir("Numero de comanda", "uno de los numeros de arriba, ej.: 1")
     if not texto.isdigit():
-        print("  Hay que escribir el número de una de las comandas de arriba,")
-        print("  usando solo dígitos.")
+        error("Hay que escribir el número de una de las comandas de arriba,\n"
+              "usando solo dígitos.")
         return None
     elegida = mozo.buscar(int(texto))
     if elegida is None:
-        print(f"  No existe ninguna comanda con el número {texto}.")
+        error(f"No existe ninguna comanda con el número {texto}.")
         return None
     if elegida.estado != estado:
-        print(f"  La comanda #{elegida.numero} está en estado '{elegida.estado}'")
-        print(f"  y para esta operación tiene que estar en '{estado}'.")
+        error(f"La comanda #{elegida.numero} está en estado '{elegida.estado}'\n"
+              f"y para esta operación tiene que estar en '{estado}'.")
         return None
     return elegida
+
+
+# Orientacion que se muestra arriba del menu: que escribir en cada campo
+AYUDA = [
+    "MOZO: abra la comanda de una mesa, cargue los platos y enviela a cocina.",
+    "Numero de mesa: una mesa ya registrada y ocupada, por ejemplo  1",
+    "Codigo del plato: por ejemplo  P1 ; escriba  0  para terminar de cargar",
+    "Observacion: texto libre, por ejemplo  sin cebolla  (o Enter si no hay)",
+]
 
 
 def menu(restaurante=None, mesas=None):
@@ -179,28 +193,46 @@ def menu(restaurante=None, mesas=None):
     # igual arranca pero no va a encontrar ninguna para atender.
     carta = obtener_carta(restaurante)
     mesas = mesas if mesas is not None else {}
-    mozo = Mozo(input("\nNombre del mozo: ").strip() or "Sin nombre")
+
+    # El nombre del mozo se valida: solo letras y espacios, de 2 a 30 caracteres.
+    # Si el usuario cancela con Enter vacio, se vuelve al menu principal.
+    nombre = pedir_texto("Nombre del mozo", "Lucas", minimo=2, maximo=30,
+                         solo_letras=True)
+    if nombre is None:
+        return
+    mozo = Mozo(nombre)
+
+    # 'esperar' vale True despues de ejecutar una opcion: asi, antes de limpiar
+    # la pantalla, se espera un Enter para que el usuario alcance a leer el resultado.
+    esperar = False
 
     while True:
-        print("\n=== MODULO MOZO ===")
+        if esperar:
+            pausa()
+        limpiar()   # pantalla limpia en cada vuelta: la terminal no se llena de texto
+        titulo(f"MODULO MOZO  ({mozo.nombre})")
+        for linea in AYUDA:
+            info(linea)
         print("1. Abrir comanda")
         print("2. Agregar platos a una comanda")
         print("3. Enviar comanda a la cocina")
         print("4. Entregar comanda lista")
         print("5. Ver todas las comandas")
         print("0. Volver")
-        opcion = input("Opción: ").strip()
+        opcion = pedir("Opcion", "escriba el numero y Enter, ej.: 1")
+        esperar = True
+        print()
 
         if opcion == "1":
             if not mesas:
-                print("  No hay mesas registradas. Primero hay que darlas de"
+                error("No hay mesas registradas. Primero hay que darlas de"
                       " alta desde el modulo Mesa.")
                 continue
 
-            texto = input("Número de mesa: ").strip()
+            texto = pedir("Numero de mesa", "entero mayor que cero, ej.: 1")
             if not texto.isdigit() or int(texto) <= 0:
-                print("  El número de mesa tiene que ser un entero mayor que cero,")
-                print("  escrito solo con dígitos.")
+                error("El número de mesa tiene que ser un entero mayor que cero,\n"
+                      "escrito solo con dígitos.")
                 continue
 
             # Una comanda solo se abre sobre una mesa que exista y que ya haya
@@ -208,12 +240,12 @@ def menu(restaurante=None, mesas=None):
             numero = int(texto)
             mesa = mesas.get(numero)
             if mesa is None:
-                print(f"  La mesa {numero} no está registrada. Hay que darla de alta")
-                print("  desde el módulo Mesa antes de poder atenderla.")
+                error(f"La mesa {numero} no está registrada. Hay que darla de alta\n"
+                      "desde el módulo Mesa antes de poder atenderla.")
                 continue
             if mesa.estado != "Ocupada":
-                print(f"  La mesa {numero} figura como Libre. Hay que ocuparla desde")
-                print("  el módulo Mesa antes de tomarle el pedido.")
+                error(f"La mesa {numero} figura como Libre. Hay que ocuparla desde\n"
+                      "el módulo Mesa antes de tomarle el pedido.")
                 continue
 
             # Cada mesa puede tener una sola comanda activa a la vez, asi que se
@@ -225,12 +257,12 @@ def menu(restaurante=None, mesas=None):
                     comanda_activa = True
                     break
             if comanda_activa:
-                print(f"  La mesa {numero} ya tiene una comanda sin entregar. Hay que")
-                print("  entregarla antes de abrir otra, o agregar los platos a esa.")
+                error(f"La mesa {numero} ya tiene una comanda sin entregar. Hay que\n"
+                      "entregarla antes de abrir otra, o agregar los platos a esa.")
                 continue
 
             comanda = mozo.nueva_comanda(numero)
-            print(f"  Comanda #{comanda.numero} abierta.")
+            ok(f"Comanda #{comanda.numero} abierta.")
             cargar_items(comanda, carta, mozo)
             comanda.mostrar_informacion(carta)
 
@@ -243,24 +275,29 @@ def menu(restaurante=None, mesas=None):
         elif opcion == "3":
             comanda = elegir_comanda(mozo, PENDIENTE, carta)
             if comanda and not comanda.items:
-                print("  La comanda no tiene ningún plato cargado todavía. Hay que")
-                print("  agregarlos con la opción 2 antes de mandarla a la cocina.")
+                error("La comanda no tiene ningún plato cargado todavía. Hay que\n"
+                      "agregarlos con la opción 2 antes de mandarla a la cocina.")
             elif comanda:
                 mozo.cambiar_estado(comanda, EN_PREPARACION)
-                print(f"  Comanda #{comanda.numero} enviada a la cocina.")
+                ok(f"Comanda #{comanda.numero} enviada a la cocina.")
 
         elif opcion == "4":
             comanda = elegir_comanda(mozo, LISTA, carta)
             if comanda:
                 mozo.cambiar_estado(comanda, ENTREGADA)
-                print(f"  Comanda #{comanda.numero} entregada en la mesa"
-                      f" {comanda.mesa}. Total: {comanda.calcular_total(carta):,} Gs.")
+                ok(f"Comanda #{comanda.numero} entregada en la mesa"
+                   f" {comanda.mesa}. Total: {comanda.calcular_total(carta):,} Gs.")
 
         elif opcion == "5":
             if not mozo.comandas:
-                print("  Todavía no hay comandas.")
+                info("Todavía no hay comandas.")
             for comanda in mozo.comandas:
                 comanda.mostrar_informacion(carta)
 
         elif opcion == "0":
-            break
+            break   # vuelve al menu principal sin esperar Enter
+
+        else:
+            # Cualquier otra cosa no es una opcion del menu
+            error(f"'{opcion}' no es una opción del menú. Escriba uno de los\n"
+                  "números de la lista, por ejemplo 1.")

@@ -13,80 +13,15 @@ que el modulo Mozo para leer y escribir ese archivo, asi no hay dos copias.
 El archivo se llama pass_.py porque 'pass' es palabra reservada de Python.
 """
 
-import os
-import sys
 from collections import deque
 
+from modulos.entrada import (aviso, error, info, limpiar, ok, pausa, pedir,
+                             pedir_entero, pintar, titulo)
 from modulos.menu import obtener_carta
 from modulos.mozo import EN_PREPARACION, LISTA, Mozo
 
 # Minutos a partir de los cuales una comanda se marca como demorada
 LIMITE_DEMORA = 20
-
-# ---------------------------------------------------------------------
-# Ayudas de pantalla: colores, limpiar la terminal y pedir datos.
-# ---------------------------------------------------------------------
-if sys.stdout.isatty():
-    if os.name == "nt":
-        os.system("")  # activa los colores en la terminal de Windows
-    COLORES = {"verde": "\033[92m", "rojo": "\033[91m", "amarillo": "\033[93m",
-               "celeste": "\033[96m", "gris": "\033[90m", "blanco": "\033[97m"}
-    FIN_COLOR = "\033[0m"
-else:
-    # Sin terminal real (por ejemplo, salida a un archivo) no se usan colores
-    COLORES = dict.fromkeys(
-        ["verde", "rojo", "amarillo", "celeste", "gris", "blanco"], "")
-    FIN_COLOR = ""
-
-
-def pintar(texto, color):
-    return COLORES[color] + texto + FIN_COLOR
-
-
-def limpiar():
-    """Borra la pantalla para que no se acumulen pantallas viejas."""
-    if sys.stdout.isatty():
-        os.system("cls" if os.name == "nt" else "clear")
-    else:
-        print()
-
-
-def titulo(texto):
-    linea = "=" * (len(texto) + 8)
-    print(pintar(linea, "celeste"))
-    print(pintar("    " + texto, "celeste"))
-    print(pintar(linea, "celeste"))
-
-
-def ok(texto):
-    print(pintar("[OK] " + texto, "verde"))
-
-
-def error(texto):
-    print(pintar("[ERROR] " + texto, "rojo"))
-
-
-def aviso(texto):
-    print(pintar("[!] " + texto, "amarillo"))
-
-
-def info(texto):
-    print(pintar(texto, "gris"))
-
-
-def pedir(etiqueta, ejemplo=""):
-    """Pregunta un dato mostrando entre parentesis que hay que escribir."""
-    if ejemplo:
-        etiqueta = etiqueta + " " + pintar("(" + ejemplo + ")", "gris")
-    print(etiqueta + ": ", end="", flush=True)
-    return input().strip()
-
-
-def pausa():
-    """Espera un Enter para que el resultado se pueda leer antes de limpiar."""
-    print(pintar("\nPresione Enter para continuar...", "gris"), end="", flush=True)
-    input()
-
 
 
 class Pass:
