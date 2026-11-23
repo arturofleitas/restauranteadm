@@ -13,6 +13,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.align import Align
 from rich import box
+# pyrefly: ignore[missing-import]
 from pyfiglet import figlet_format
 
 
