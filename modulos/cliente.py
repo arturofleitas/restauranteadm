@@ -1,3 +1,4 @@
+from modulos.base_datos import registrar_cliente
 from modulos.entrada import ok, pedir_texto
 
 
@@ -37,6 +38,7 @@ def menu(restaurante):
         return
 
     cliente = Cliente(nombre)
+    registrar_cliente(nombre)   # queda guardado con la fecha y hora de llegada
 
     print()
     ok("Cliente registrado correctamente.")

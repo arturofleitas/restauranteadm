@@ -1,11 +1,7 @@
-import json
-import os
-
+from modulos.base_datos import conexion
 from modulos.entrada import (error, info, limpiar, ok, pausa, pedir,
                              pedir_entero, titulo)
 
-ARCHIVO = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datos", "menu.json")
 
 INICIALES = {
     "P1": ("Pizza Napolitana", 60000),
@@ -40,34 +36,27 @@ class Carta:
         self.cargar()
 
     def cargar(self):
-        """Lee la carta del JSON, o la crea con los productos iniciales la primera vez."""
-        if not os.path.exists(ARCHIVO):
+        """Lee la carta de la base, o la crea con los productos iniciales la primera vez."""
+        with conexion() as con:
+            filas = con.execute(
+                "SELECT codigo, nombre, precio, disponible FROM productos ORDER BY rowid").fetchall()
+        if not filas:
             for codigo, (nombre, precio) in INICIALES.items():
                 self.productos[codigo] = Producto(codigo, nombre, precio)
             self.guardar()
             return
-        # Si alguien editó el archivo a mano y lo dejó con la sintaxis rota, el
-        # programa avisa y sigue con la carta inicial en lugar de cortarse
-        try:
-            with open(ARCHIVO, encoding="utf-8") as archivo:
-                for codigo, datos in json.load(archivo).items():
-                    self.productos[codigo] = Producto(
-                        codigo, datos["nombre"], datos["precio"], datos["disponible"])
-        except (json.JSONDecodeError, OSError, KeyError):
-            print(f"El archivo {os.path.basename(ARCHIVO)} no se pudo leer o tiene un")
-            print("formato distinto al esperado. Se arranca con la carta inicial.")
-            self.productos = {}
-            for codigo, (nombre, precio) in INICIALES.items():
-                self.productos[codigo] = Producto(codigo, nombre, precio)
+        for fila in filas:
+            self.productos[fila["codigo"]] = Producto(
+                fila["codigo"], fila["nombre"], fila["precio"], bool(fila["disponible"]))
 
     def guardar(self):
-        """Escribe la carta completa en el JSON."""
-        os.makedirs(os.path.dirname(ARCHIVO), exist_ok=True)
-        datos = {p.codigo: {"nombre": p.nombre, "precio": p.precio,
-                            "disponible": p.disponible} for p in self.productos.values()}
-        with open(ARCHIVO, "w", encoding="utf-8") as archivo:
-            # ensure_ascii en falso conserva las tildes legibles dentro del archivo
-            json.dump(datos, archivo, indent=2, ensure_ascii=False)
+        """Guarda la carta completa; si un producto ya existe, solo se actualiza."""
+        with conexion() as con:
+            con.executemany(
+                """INSERT INTO productos (codigo, nombre, precio, disponible) VALUES (?, ?, ?, ?)
+                   ON CONFLICT(codigo) DO UPDATE SET nombre = excluded.nombre,
+                       precio = excluded.precio, disponible = excluded.disponible""",
+                [(p.codigo, p.nombre, p.precio, int(p.disponible)) for p in self.productos.values()])
 
     def obtener(self, codigo):
         return self.productos.get(codigo.upper())

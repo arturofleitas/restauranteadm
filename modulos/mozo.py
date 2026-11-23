@@ -1,13 +1,10 @@
-import json
-import os
 from datetime import datetime
 
+from modulos.base_datos import conexion
 from modulos.entrada import (error, info, limpiar, ok, pausa, pedir,
                              pedir_texto, titulo)
 from modulos.menu import obtener_carta
 
-ARCHIVO = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datos", "comandas.json")
 
 FORMATO_HORA = "%Y-%m-%d %H:%M:%S"
 
@@ -15,6 +12,7 @@ PENDIENTE = "pendiente"
 EN_PREPARACION = "en preparacion"
 LISTA = "lista"
 ENTREGADA = "entregada"
+COBRADA = "cobrada"
 
 
 class Comanda:
@@ -80,32 +78,46 @@ class Mozo:
         self.cargar()
 
     def cargar(self):
-        """Lee las comandas del JSON, o empieza vacío si el archivo todavía no existe."""
-        if not os.path.exists(ARCHIVO):
-            return
-        # Si el archivo está roto o le falta algún campo, el programa avisa y
-        # arranca sin comandas en lugar de cortarse con un error
-        try:
-            with open(ARCHIVO, encoding="utf-8") as archivo:
-                self.comandas = [Comanda.desde_diccionario(d) for d in json.load(archivo)]
-        except (json.JSONDecodeError, OSError, KeyError, ValueError):
-            print(f"El archivo {os.path.basename(ARCHIVO)} no se pudo leer o tiene un")
-            print("formato distinto al esperado. Se arranca sin comandas cargadas.")
-            self.comandas = []
+        """Lee de la base todas las comandas con sus platos."""
+        with conexion() as con:
+            filas = con.execute("SELECT numero, mesa, mozo, hora, estado FROM comandas"
+                                " ORDER BY numero").fetchall()
+            platos = con.execute("SELECT comanda, codigo, cantidad, obs FROM items"
+                                 " ORDER BY id").fetchall()
+        # Los platos se agrupan por numero de comanda para armar cada objeto Comanda
+        por_comanda = {}
+        for plato in platos:
+            por_comanda.setdefault(plato["comanda"], []).append(
+                {"codigo": plato["codigo"], "cantidad": plato["cantidad"], "obs": plato["obs"]})
+        self.comandas = [
+            Comanda.desde_diccionario({**dict(fila), "items": por_comanda.get(fila["numero"], [])})
+            for fila in filas]
 
-    def guardar(self):
-        """Escribe todas las comandas en el JSON."""
-        os.makedirs(os.path.dirname(ARCHIVO), exist_ok=True)
-        with open(ARCHIVO, "w", encoding="utf-8") as archivo:
-            # ensure_ascii en falso conserva las tildes legibles dentro del archivo
-            json.dump([c.a_diccionario() for c in self.comandas], archivo,
-                      indent=2, ensure_ascii=False)
+    def guardar(self, comanda=None):
+        """Guarda una comanda puntual o, si no se indica ninguna, todas."""
+        comandas = [comanda] if comanda else self.comandas
+        with conexion() as con:
+            for c in comandas:
+                datos = c.a_diccionario()
+                con.execute(
+                    """INSERT INTO comandas (numero, mesa, mozo, hora, estado) VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(numero) DO UPDATE SET mesa = excluded.mesa, mozo = excluded.mozo,
+                           hora = excluded.hora, estado = excluded.estado""",
+                    (datos["numero"], datos["mesa"], datos["mozo"], datos["hora"], datos["estado"]))
+                # Los platos de la comanda se reemplazan enteros por la version actual
+                con.execute("DELETE FROM items WHERE comanda = ?", (c.numero,))
+                con.executemany(
+                    "INSERT INTO items (comanda, codigo, cantidad, obs) VALUES (?, ?, ?, ?)",
+                    [(c.numero, i["codigo"], i["cantidad"], i["obs"]) for i in c.items])
 
     def nueva_comanda(self, mesa):
-        numero = max([c.numero for c in self.comandas], default=0) + 1
-        comanda = Comanda(numero, mesa, self.nombre)
+        # El numero sale de la base y no de la lista en memoria, por si otro modulo
+        # o la interfaz web abrio una comanda mientras tanto
+        with conexion() as con:
+            ultimo = con.execute("SELECT COALESCE(MAX(numero), 0) FROM comandas").fetchone()[0]
+        comanda = Comanda(ultimo + 1, mesa, self.nombre)
         self.comandas.append(comanda)
-        self.guardar()
+        self.guardar(comanda)
         return comanda
 
     def buscar(self, numero):
@@ -120,7 +132,7 @@ class Mozo:
 
     def cambiar_estado(self, comanda, estado):
         comanda.estado = estado
-        self.guardar()
+        self.guardar(comanda)
 
 
 def cargar_items(comanda, carta, mozo):
@@ -150,7 +162,7 @@ def cargar_items(comanda, carta, mozo):
         comanda.agregar_item(producto.codigo, int(texto),
                              pedir("Observacion", "ej.: sin cebolla; Enter si no hay"))
         ok(f"{texto} x {producto.nombre} agregado a la comanda.")
-    mozo.guardar()
+    mozo.guardar(comanda)
 
 
 def elegir_comanda(mozo, estado, carta):
@@ -253,7 +265,7 @@ def menu(restaurante=None, mesas=None):
             comanda_activa = False
             for comanda_existente in mozo.comandas:
                 if (comanda_existente.mesa == numero
-                        and comanda_existente.estado != ENTREGADA):
+                        and comanda_existente.estado not in (ENTREGADA, COBRADA)):
                     comanda_activa = True
                     break
             if comanda_activa:

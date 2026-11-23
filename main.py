@@ -7,6 +7,7 @@ La portada visual la dibuja modulos/interfaz.py; aqui solo se decide que hacer."
 from modulos import caja, cliente, mesa, mozo
 from modulos import menu as carta_menu
 from modulos import pass_ as pase
+from modulos.base_datos import cargar_mesas, guardar_mesas
 from modulos.entrada import (aviso, info, limpiar, pausa, pedir, pintar, titulo)
 from modulos.menu import Carta
 from modulos.mozo import EN_PREPARACION, LISTA, PENDIENTE, ENTREGADA, Mozo
@@ -43,7 +44,7 @@ class Restaurante:
 
     def __init__(self):
         self.carta = Carta()   # una sola carta para Menu, Mozo y Pass
-        self.mesas = {}        # numero de mesa -> objeto Mesa
+        self.mesas = cargar_mesas()   # numero de mesa -> objeto Mesa, leidas de la base
 
 
 def mostrar_guia():
@@ -158,6 +159,10 @@ def main():
         else:
             mensaje = ("Opcion invalida. Escriba uno de los numeros del menu,"
                        " por ejemplo 2.")
+
+        # Mesa, Mozo y Caja pueden cambiar el estado de las mesas: al volver al menu
+        # principal se guardan en la base para no perderlas al cerrar el programa
+        guardar_mesas(restaurante.mesas)
 
 
 if __name__ == "__main__":

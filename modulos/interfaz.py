@@ -5,6 +5,7 @@ Diseño de la portada del restaurante con Rich y Pyfiglet.
 Este archivo no modifica los módulos del equipo.
 """
 
+from datetime import datetime
 from itertools import zip_longest
 
 from rich.console import Console
@@ -14,6 +15,8 @@ from rich.text import Text
 from rich.align import Align
 from rich import box
 from pyfiglet import figlet_format
+
+from modulos.base_datos import ventas_desde
 
 
 console = Console()
@@ -331,11 +334,15 @@ def mostrar_inicio(mesas=None, opciones_menu=None):
     # ESTADÍSTICAS
     # ----------------------------------------------
 
+    # Las ventas del dia salen de la tabla de ventas que registra la caja
+    hoy = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    ventas_hoy = sum(v["total"] for v in ventas_desde(hoy))
+
     console.print(
         f"[bold cyan]🍽 Mesas: "
         f"{ocupadas}/{len(mesas)}[/bold cyan]"
         "    [bold green]▂▄▆ Ventas del día: "
-        "G. 0[/bold green]"
+        f"G. {ventas_hoy:,}[/bold green]"
         "    [bold yellow]⚠ Alertas: 0[/bold yellow]"
     )
 

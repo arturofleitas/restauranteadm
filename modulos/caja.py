@@ -1,7 +1,33 @@
 """Módulo para la gestión de caja y cobranza de mesas."""
 from modulos.entrada import (aviso, error, info, limpiar, ok, pausa, pedir,
                              pedir_si_no, titulo)
-from modulos.mozo import ENTREGADA, Mozo
+from modulos.base_datos import registrar_venta
+from modulos.mozo import COBRADA, ENTREGADA, Mozo
+
+IVA = 0.10
+
+
+def calcular_cuenta(comandas, carta):
+    """Devuelve subtotal, IVA y total de las comandas de una mesa."""
+    subtotal = sum(c.calcular_total(carta) for c in comandas)
+    impuesto = subtotal * IVA
+    return subtotal, impuesto, subtotal + impuesto
+
+
+def cerrar_cuenta(num_mesa, comandas, registro, mesas, carta):
+    """Marca las comandas como cobradas, libera la mesa y registra la venta.
+
+    La usan tanto la caja de consola como la interfaz web, asi el cobro se hace
+    siempre de la misma forma.
+    """
+    subtotal, impuesto, total = calcular_cuenta(comandas, carta)
+    for c in comandas:
+        registro.cambiar_estado(c, COBRADA)
+    # Al cobrar, la mesa vuelve a quedar libre para el proximo cliente
+    if num_mesa in mesas:
+        mesas[num_mesa].liberar()
+    registrar_venta(num_mesa, [c.numero for c in comandas], subtotal, impuesto, total)
+    return total
 
 
 def gestionar_caja(restaurante):
@@ -69,12 +95,7 @@ def gestionar_caja(restaurante):
                       "Elija una de las mesas indicadas arriba.")
                 continue
 
-            subtotal = sum(c.calcular_total(restaurante.carta)
-                           for c in comandas_mesa)
-
-            IVA = 0.10
-            impuesto = subtotal * IVA
-            total_a_pagar = subtotal + impuesto
+            subtotal, impuesto, total_a_pagar = calcular_cuenta(comandas_mesa, restaurante.carta)
 
             print(f"\n--- TICKET DE PAGO (Mesa {num_mesa}) ---")
             for c in comandas_mesa:
@@ -95,12 +116,8 @@ def gestionar_caja(restaurante):
             # pedir_si_no repite la pregunta en rojo hasta que respondan s o n
             if pedir_si_no("¿Confirmar cobro?"):
 
-                for c in comandas_mesa:
-                    registro.cambiar_estado(c, "cobrada")
-
-                # Al cobrar, la mesa vuelve a quedar libre para el proximo cliente
-                if num_mesa in restaurante.mesas:
-                    restaurante.mesas[num_mesa].liberar()
+                cerrar_cuenta(num_mesa, comandas_mesa, registro,
+                              restaurante.mesas, restaurante.carta)
 
                 ok(f"¡Cobro exitoso! Mesa {num_mesa} cobrada y liberada correctamente.")
             else:
