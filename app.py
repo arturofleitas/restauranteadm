@@ -56,6 +56,20 @@ def sin_cobrar(mozo, numero_mesa):
     return any(c.mesa == numero_mesa and c.estado != COBRADA for c in mozo.comandas)
 
 
+def agregar_plato(mozo, comanda, carta, codigo, cantidad, obs):
+    """Agrega el plato y deja los campos en blanco para cargar el siguiente.
+
+    Se ejecuta como callback del boton porque Streamlit solo permite cambiar el
+    valor de un campo antes de volver a dibujarlo.
+    """
+    comanda.agregar_item(codigo, int(cantidad), obs.strip())
+    mozo.guardar(comanda)
+    st.session_state[f"cant_{comanda.numero}"] = 1
+    st.session_state[f"obs_{comanda.numero}"] = ""
+    st.session_state.aviso = ("ok", f"{cantidad} × {carta.obtener(codigo).nombre}"
+                                    f" agregado a la comanda #{comanda.numero}.")
+
+
 def detalle(comanda, carta):
     """Texto corto con los platos de una comanda y sus observaciones."""
     partes = []
@@ -255,13 +269,15 @@ elif pagina == "Mozo":
             c1, c2, c3, c4 = st.columns([3, 1, 2, 1.2])
             codigo = c1.selectbox("Plato", [p.codigo for p in disponibles], key=f"plato_{comanda.numero}",
                                   format_func=lambda c: f"{c} · {carta.obtener(c).nombre}")
-            cantidad = c2.number_input("Cantidad", 1, 20, 1, key=f"cant_{comanda.numero}")
+            # Los valores iniciales van en session_state para que el callback pueda
+            # limpiarlos despues de agregar un plato sin que Streamlit se queje
+            st.session_state.setdefault(f"cant_{comanda.numero}", 1)
+            st.session_state.setdefault(f"obs_{comanda.numero}", "")
+            cantidad = c2.number_input("Cantidad", 1, 20, key=f"cant_{comanda.numero}")
             obs = c3.text_input("Observación", key=f"obs_{comanda.numero}", placeholder="ej.: sin cebolla")
             c4.write("")
-            if c4.button("Agregar", key=f"agregar_{comanda.numero}", use_container_width=True):
-                comanda.agregar_item(codigo, int(cantidad), obs.strip())
-                mozo.guardar(comanda)
-                avisar("ok", f"{cantidad} × {carta.obtener(codigo).nombre} agregado a la comanda #{comanda.numero}.")
+            c4.button("Agregar", key=f"agregar_{comanda.numero}", use_container_width=True,
+                      on_click=agregar_plato, args=(mozo, comanda, carta, codigo, cantidad, obs))
             if st.button("Enviar a cocina", key=f"enviar_{comanda.numero}", type="primary",
                          disabled=not comanda.items):
                 mozo.cambiar_estado(comanda, EN_PREPARACION)
