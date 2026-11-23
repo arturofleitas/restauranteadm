@@ -7,7 +7,8 @@ La portada visual la dibuja modulos/interfaz.py; aqui solo se decide que hacer."
 from modulos import caja, cliente, mesa, mozo
 from modulos import menu as carta_menu
 from modulos import pass_ as pase
-from modulos.entrada import (aviso, info, limpiar, pausa, pedir, pintar, titulo)
+from modulos.entrada import (
+    aviso, info, limpiar, pausa, pedir, pintar, titulo)
 from modulos.menu import Carta
 from modulos.mozo import EN_PREPARACION, LISTA, PENDIENTE, ENTREGADA, Mozo
 
