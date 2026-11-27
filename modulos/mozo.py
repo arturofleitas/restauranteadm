@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from modulos.base_datos import conexion
+from modulos.base_datos import conexion, registrar_mozo
 from modulos.entrada import (error, info, limpiar, ok, pausa, pedir,
                              pedir_texto, titulo)
 from modulos.menu import obtener_carta
@@ -212,6 +212,7 @@ def menu(restaurante=None, mesas=None):
                          solo_letras=True)
     if nombre is None:
         return
+    registrar_mozo(nombre)   # el mozo queda en el plantel y aparece tambien en la interfaz web
     mozo = Mozo(nombre)
 
     # 'esperar' vale True despues de ejecutar una opcion: asi, antes de limpiar

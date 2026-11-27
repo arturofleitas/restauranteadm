@@ -14,8 +14,9 @@ import pandas as pd
 import streamlit as st
 
 from main import siguiente_paso
-from modulos.base_datos import (cargar_mesas, clientes_de_hoy, guardar_mesas,
-                                platos_vendidos_desde, registrar_cliente, ventas_desde)
+from modulos.base_datos import (cargar_mesas, clientes_de_hoy, guardar_mesas, listar_mozos,
+                                platos_vendidos_desde, registrar_cliente, registrar_mozo,
+                                ventas_desde)
 from modulos.caja import IVA, calcular_cuenta, cerrar_cuenta
 from modulos.menu import Carta
 from modulos.mesa import MAX_CAPACIDAD, MAX_NUMERO_MESA, Mesa
@@ -88,8 +89,12 @@ registro = Mozo("Sistema")
 
 st.sidebar.title("🍽️ RestauPy")
 st.sidebar.caption("De la mesa a la caja")
+# El mozo elegido se guarda en la sesion y no en el campo, asi no se pierde al cambiar de pagina
+st.session_state.setdefault("mozo_actual", None)
 pagina = st.sidebar.radio("Módulo", ["Inicio", "Clientes", "Mesas", "Menú", "Mozo",
                                      "Cocina", "Caja", "Reportes"])
+if st.session_state.mozo_actual:
+    st.sidebar.success(f"Mozo en turno: {st.session_state.mozo_actual}")
 mostrar_aviso()
 
 
@@ -193,7 +198,7 @@ elif pagina == "Menú":
     tab_carta, tab_combo, tab_disponibles = st.tabs(["Carta", "Combo óptimo", "Disponibilidad"])
 
     with tab_carta:
-        c1, c2 = st.columns([3, 1])
+        c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
         texto = c1.text_input("Buscar plato", placeholder="ej.: milanesa")
         ordenar = c2.toggle("Ordenar por precio")
         # Se usan los mismos metodos de la consola: busqueda lineal y burbuja
@@ -237,8 +242,27 @@ elif pagina == "Menú":
 
 elif pagina == "Mozo":
     st.title("Mozo")
-    nombre_mozo = st.text_input("Nombre del mozo", key="nombre_mozo", placeholder="ej.: Lucas")
-    mozo = Mozo(nombre_mozo.strip() or "Sin nombre")
+    plantel = listar_mozos()
+    NUEVO = "➕ Registrar un mozo nuevo"
+    opciones = plantel + [NUEVO]
+    actual = st.session_state.mozo_actual
+    elegido = st.selectbox("Mozo en turno", opciones,
+                           index=opciones.index(actual) if actual in plantel else len(plantel))
+    if elegido == NUEVO:
+        st.session_state.mozo_actual = None
+        with st.form("nuevo_mozo", clear_on_submit=True):
+            c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
+            nuevo = c1.text_input("Nombre del mozo nuevo", placeholder="ej.: Lucas Saavedra")
+            if c2.form_submit_button("Registrar mozo", use_container_width=True):
+                nuevo = nuevo.strip()
+                if not 2 <= len(nuevo) <= 30 or not NOMBRE_VALIDO.match(nuevo):
+                    avisar("error", "El nombre del mozo tiene que tener entre 2 y 30 letras, sin números.")
+                registrar_mozo(nuevo)
+                st.session_state.mozo_actual = nuevo
+                avisar("ok", f"{nuevo} quedó registrado y en turno.")
+    else:
+        st.session_state.mozo_actual = elegido
+    mozo = Mozo(st.session_state.mozo_actual or "Sin nombre")
     disponibles = [p for p in carta.productos.values() if p.disponible]
 
     st.subheader("Abrir comanda")
@@ -247,12 +271,11 @@ elif pagina == "Mozo":
     if not para_atender:
         st.caption("No hay mesas ocupadas esperando pedido. Ocupe una en Mesas o Clientes.")
     else:
-        c1, c2 = st.columns([3, 1])
+        c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
         mesa_elegida = c1.selectbox("Mesa", para_atender, format_func=lambda m: f"Mesa {m}")
-        c2.write("")
         if c2.button("Abrir comanda", type="primary", use_container_width=True):
-            if not nombre_mozo.strip() or not NOMBRE_VALIDO.match(nombre_mozo.strip()):
-                avisar("error", "Escriba el nombre del mozo (solo letras) antes de abrir la comanda.")
+            if not st.session_state.mozo_actual:
+                avisar("error", "Primero registre o elija el mozo en turno.")
             comanda = mozo.nueva_comanda(mesa_elegida)
             avisar("ok", f"Comanda #{comanda.numero} abierta para la mesa {mesa_elegida}."
                          " Cargue los platos abajo.")
@@ -266,7 +289,7 @@ elif pagina == "Mozo":
             st.markdown(f"**Comanda #{comanda.numero} · Mesa {comanda.mesa}** · "
                         f"{gs(comanda.calcular_total(carta))}")
             st.caption(detalle(comanda, carta))
-            c1, c2, c3, c4 = st.columns([3, 1, 2, 1.2])
+            c1, c2, c3, c4 = st.columns([3, 1, 2, 1.2], vertical_alignment="bottom")
             codigo = c1.selectbox("Plato", [p.codigo for p in disponibles], key=f"plato_{comanda.numero}",
                                   format_func=lambda c: f"{c} · {carta.obtener(c).nombre}")
             # Los valores iniciales van en session_state para que el callback pueda
@@ -275,7 +298,6 @@ elif pagina == "Mozo":
             st.session_state.setdefault(f"obs_{comanda.numero}", "")
             cantidad = c2.number_input("Cantidad", 1, 20, key=f"cant_{comanda.numero}")
             obs = c3.text_input("Observación", key=f"obs_{comanda.numero}", placeholder="ej.: sin cebolla")
-            c4.write("")
             c4.button("Agregar", key=f"agregar_{comanda.numero}", use_container_width=True,
                       on_click=agregar_plato, args=(mozo, comanda, carta, codigo, cantidad, obs))
             if st.button("Enviar a cocina", key=f"enviar_{comanda.numero}", type="primary",
@@ -289,7 +311,7 @@ elif pagina == "Mozo":
         st.caption("La cocina todavía no terminó ninguna comanda.")
     for comanda in listas:
         with st.container(border=True):
-            c1, c2 = st.columns([4, 1])
+            c1, c2 = st.columns([4, 1], vertical_alignment="center")
             c1.markdown(f"🟢 **Comanda #{comanda.numero} · Mesa {comanda.mesa}**  \n{detalle(comanda, carta)}")
             if c2.button("Entregar", key=f"entregar_{comanda.numero}", use_container_width=True):
                 mozo.cambiar_estado(comanda, ENTREGADA)

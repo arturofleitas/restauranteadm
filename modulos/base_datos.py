@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS items (
     cantidad INTEGER NOT NULL,
     obs      TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS mozos (
+    nombre TEXT PRIMARY KEY,
+    alta   TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS ventas (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha    TEXT NOT NULL,
@@ -141,6 +145,18 @@ def clientes_de_hoy():
         return [dict(f) for f in con.execute(
             "SELECT nombre, mesa, llegada FROM clientes WHERE llegada LIKE ? ORDER BY id DESC",
             (hoy + "%",))]
+
+
+def registrar_mozo(nombre):
+    """Agrega un mozo al plantel; si ya estaba registrado no lo duplica."""
+    with conexion() as con:
+        con.execute("INSERT OR IGNORE INTO mozos (nombre, alta) VALUES (?, ?)",
+                    (nombre, datetime.now().strftime(FORMATO_FECHA)))
+
+
+def listar_mozos():
+    with conexion() as con:
+        return [f["nombre"] for f in con.execute("SELECT nombre FROM mozos ORDER BY nombre")]
 
 
 def registrar_venta(mesa, numeros_comandas, subtotal, iva, total):
