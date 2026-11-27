@@ -23,7 +23,7 @@ from modulos.mesa import MAX_CAPACIDAD, MAX_NUMERO_MESA, Mesa
 from modulos.mozo import COBRADA, EN_PREPARACION, ENTREGADA, LISTA, PENDIENTE, Mozo
 from modulos.pass_ import LIMITE_DEMORA, Pass
 
-# Mismas reglas que pedir_texto en la consola: solo letras, espacios y - ' .
+# Acepta lo mismo que pedir_texto en la consola, letras, espacios y - ' .
 NOMBRE_VALIDO = re.compile(r"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü' .-]+$")
 ICONOS = {PENDIENTE: "🟡", EN_PREPARACION: "🟠", LISTA: "🟢", ENTREGADA: "🔵", COBRADA: "⚪"}
 
@@ -201,7 +201,7 @@ elif pagina == "Menú":
         c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
         texto = c1.text_input("Buscar plato", placeholder="ej.: milanesa")
         ordenar = c2.toggle("Ordenar por precio")
-        # Se usan los mismos metodos de la consola: busqueda lineal y burbuja
+        # La busqueda y el orden son los mismos de la consola
         productos = carta.buscar(texto) if texto else list(carta.productos.values())
         if ordenar:
             productos = [p for p in carta.ordenar_por_precio() if p in productos]

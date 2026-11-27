@@ -133,7 +133,7 @@ def obtener_carta(restaurante):
     return restaurante.carta
 
 
-# Orientacion que se muestra arriba del menu: que escribir en cada campo
+# Texto de ayuda que aparece arriba del menu
 AYUDA = [
     "MENU: consulte la carta, busque platos y vea precios.",
     "Codigos de platos: letra y numero, por ejemplo  P1  (plato) o  B2  (bebida)",
@@ -144,8 +144,7 @@ AYUDA = [
 def menu(restaurante=None):
     carta = obtener_carta(restaurante)
 
-    # 'esperar' vale True despues de ejecutar una opcion: antes de limpiar la
-    # pantalla se espera un Enter para que el usuario alcance a leer el resultado.
+    # Despues de cada opcion se espera un Enter antes de limpiar, asi se alcanza a leer el resultado
     esperar = False
 
     while True:

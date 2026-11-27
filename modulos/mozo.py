@@ -190,7 +190,7 @@ def elegir_comanda(mozo, estado, carta):
     return elegida
 
 
-# Orientacion que se muestra arriba del menu: que escribir en cada campo
+# Texto de ayuda que aparece arriba del menu
 AYUDA = [
     "MOZO: abra la comanda de una mesa, cargue los platos y enviela a cocina.",
     "Numero de mesa: una mesa ya registrada y ocupada, por ejemplo  1",
@@ -200,14 +200,11 @@ AYUDA = [
 
 
 def menu(restaurante=None, mesas=None):
-    # La carta y las mesas llegan del programa principal para que todos los
-    # modulos trabajen sobre los mismos datos. Si no llegan mesas, el modulo
-    # igual arranca pero no va a encontrar ninguna para atender.
+    # La carta y las mesas vienen de main.py para que todos los modulos usen los mismos datos
     carta = obtener_carta(restaurante)
     mesas = mesas if mesas is not None else {}
 
-    # El nombre del mozo se valida: solo letras y espacios, de 2 a 30 caracteres.
-    # Si el usuario cancela con Enter vacio, se vuelve al menu principal.
+    # Con Enter vacio se vuelve al menu principal
     nombre = pedir_texto("Nombre del mozo", "Lucas", minimo=2, maximo=30,
                          solo_letras=True)
     if nombre is None:
@@ -215,8 +212,7 @@ def menu(restaurante=None, mesas=None):
     registrar_mozo(nombre)   # el mozo queda en el plantel y aparece tambien en la interfaz web
     mozo = Mozo(nombre)
 
-    # 'esperar' vale True despues de ejecutar una opcion: asi, antes de limpiar
-    # la pantalla, se espera un Enter para que el usuario alcance a leer el resultado.
+    # Despues de cada opcion se espera un Enter antes de limpiar, asi se alcanza a leer el resultado
     esperar = False
 
     while True:

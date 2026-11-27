@@ -1,9 +1,7 @@
 """Base de datos SQLite del restaurante.
 
-Todos los modulos guardan aca sus datos: la carta, las mesas, los clientes, las
-comandas con sus platos y las ventas de la caja. SQLite viene incluido con
-Python, asi que no hace falta instalar ni configurar ningun servidor: la base
-completa es el archivo datos/restaurante.db.
+Aca se guardan la carta, las mesas, los clientes, las comandas y las ventas,
+todo en el archivo datos/restaurante.db.
 """
 import json
 import os
@@ -109,7 +107,7 @@ def _importar_json(con):
         con.rollback()
 
 
-# Mesas: la clase Mesa sigue igual, solo se guarda y se recupera desde la base
+# La clase Mesa no cambia, ahora solo se guarda y se lee desde la base
 
 def cargar_mesas():
     from modulos.mesa import Mesa   # se importa aca para no crear una dependencia circular
@@ -131,7 +129,7 @@ def guardar_mesas(mesas):
             [(m.numero, m.capacidad, m.estado) for m in mesas.values()])
 
 
-# Clientes y ventas: se agregan como registros nuevos, nunca se reescriben
+# Los clientes y las ventas solo se agregan, nunca se reescriben
 
 def registrar_cliente(nombre, mesa=None):
     with conexion() as con:
