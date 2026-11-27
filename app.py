@@ -1,4 +1,4 @@
-"""Interfaz web de RestauPy hecha con Streamlit.
+"""Interfaz web de KaruTech hecha con Streamlit.
 
 Usa las mismas clases y la misma base de datos que la version de consola, asi que
 las dos se pueden usar al mismo tiempo: lo que se carga en una aparece en la otra.
@@ -27,7 +27,7 @@ from modulos.pass_ import LIMITE_DEMORA, Pass
 NOMBRE_VALIDO = re.compile(r"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü' .-]+$")
 ICONOS = {PENDIENTE: "🟡", EN_PREPARACION: "🟠", LISTA: "🟢", ENTREGADA: "🔵", COBRADA: "⚪"}
 
-st.set_page_config(page_title="RestauPy", page_icon="🍽️", layout="wide")
+st.set_page_config(page_title="KaruTech", page_icon="🍽️", layout="wide")
 
 
 def gs(valor):
@@ -87,7 +87,7 @@ carta = Carta()
 mesas = cargar_mesas()
 registro = Mozo("Sistema")
 
-st.sidebar.title("🍽️ RestauPy")
+st.sidebar.title("🍽️ KaruTech")
 st.sidebar.caption("De la mesa a la caja")
 # El mozo elegido se guarda en la sesion y no en el campo, asi no se pierde al cambiar de pagina
 st.session_state.setdefault("mozo_actual", None)
